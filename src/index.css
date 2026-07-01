@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-bubu-divider; }
+  body {
+    @apply bg-bubu-base text-white;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3
+           font-bold text-bubu-base transition-all duration-200
+           bg-bubu-gold hover:bg-bubu-gold-dark
+           active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3
+           font-semibold transition-all duration-200
+           bg-bubu-card text-gray-200 border border-bubu-divider
+           hover:border-bubu-muted active:scale-[0.97];
+  }
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3
+           font-bold text-white transition-all duration-200
+           bg-bubu-success hover:bg-bubu-success/85 active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3
+           font-bold text-white transition-all duration-200
+           bg-bubu-danger hover:bg-bubu-danger/85 active:scale-[0.97];
+  }
+  .card {
+    @apply rounded-2xl bg-bubu-card p-5 border border-bubu-divider;
+  }
+  .card-month {
+    @apply rounded-2xl bg-bubu-card border border-bubu-gold;
+  }
+  .input-field {
+    @apply w-full rounded-xl border border-bubu-divider bg-bubu-base px-4 py-3
+           text-white placeholder-bubu-muted
+           focus:border-bubu-gold focus:ring-2 focus:ring-bubu-gold/20
+           focus:outline-none transition-all;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-300 mb-1.5;
+  }
+  .pill-danger {
+    @apply inline-flex items-center rounded-full bg-bubu-danger px-3 py-1
+           text-[11px] font-bold uppercase tracking-wide text-white;
+  }
+  .pill-success {
+    @apply inline-flex items-center rounded-full bg-bubu-success px-3 py-1
+           text-[11px] font-bold uppercase tracking-wide text-white;
+  }
+  .pill-overdue {
+    @apply inline-flex items-center rounded-full bg-bubu-danger px-3 py-1
+           text-[11px] font-extrabold uppercase tracking-wide text-white animate-pulse-slow;
+  }
+  .bill-card {
+    @apply w-full rounded-[14px] border p-4 flex items-center gap-3 text-left
+           transition-all duration-300 active:scale-[0.98];
+  }
+  .bill-card-danger {
+    @apply border-bubu-danger bg-gradient-to-r from-bubu-danger/15 to-bubu-danger/5;
+  }
+  .bill-card-success {
+    @apply border-bubu-success bg-gradient-to-r from-bubu-success/15 to-bubu-success/5;
+  }
+  .page-title {
+    @apply text-2xl font-bold text-white;
+  }
+  .page-subtitle {
+    @apply text-sm text-bubu-secondary;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-bubu-secondary;
+  }
+}
+
+@layer utilities {
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
+.animate-slide-down { animation: slide-down 0.3s ease-out; }
+.animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up, .animate-slide-down, .animate-pulse-slow {
+    animation: none;
+  }
+}
