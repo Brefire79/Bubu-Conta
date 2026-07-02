@@ -7,3 +7,6 @@ dev-dist
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Local Netlify folder
+.netlify
