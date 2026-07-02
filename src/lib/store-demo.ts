@@ -9,7 +9,7 @@ const DEMO_USER: Profile = {
 
 const DEMO_MEMBERS: Profile[] = [
   DEMO_USER,
-  { id: 'demo-user-002', name: 'Luana', house_id: 'demo-house-001' },
+  { id: 'demo-user-002', name: 'Claudia', house_id: 'demo-house-001' },
 ]
 
 const DEMO_HOUSE: House = {
