@@ -1,7 +1,8 @@
 -- Schema para o Bubu no Supabase
 -- Execute no SQL Editor do seu projeto Supabase (idempotente: pode rodar mais de uma vez)
 
--- 1. Houses
+-- 1. Tabelas
+
 CREATE TABLE IF NOT EXISTS houses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   invite_code TEXT UNIQUE NOT NULL,
@@ -11,23 +12,6 @@ CREATE TABLE IF NOT EXISTS houses (
 
 ALTER TABLE houses ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users;
 
-ALTER TABLE houses ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Usuário autenticado pode criar casa" ON houses;
-CREATE POLICY "Usuário autenticado pode criar casa"
-  ON houses FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Membros podem ver a própria casa" ON houses;
-CREATE POLICY "Membros podem ver a própria casa"
-  ON houses FOR SELECT
-  USING (
-    id IN (SELECT house_id FROM profiles WHERE id = auth.uid())
-    OR NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid())
-  );
-
--- 2. Profiles
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users PRIMARY KEY,
   name TEXT NOT NULL,
@@ -36,27 +20,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Membros da casa podem ver perfis da mesma casa" ON profiles;
-CREATE POLICY "Membros da casa podem ver perfis da mesma casa"
-  ON profiles FOR SELECT
-  USING (
-    id = auth.uid()
-    OR house_id IN (SELECT house_id FROM profiles p WHERE p.id = auth.uid())
-  );
-
-DROP POLICY IF EXISTS "Usuário pode criar seu próprio perfil" ON profiles;
-CREATE POLICY "Usuário pode criar seu próprio perfil"
-  ON profiles FOR INSERT
-  WITH CHECK (id = auth.uid());
-
-DROP POLICY IF EXISTS "Usuário pode atualizar o próprio perfil" ON profiles;
-CREATE POLICY "Usuário pode atualizar o próprio perfil"
-  ON profiles FOR UPDATE
-  USING (id = auth.uid());
-
--- 3. Bills
 CREATE TABLE IF NOT EXISTS bills (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   house_id UUID REFERENCES houses NOT NULL,
@@ -73,24 +36,6 @@ CREATE TABLE IF NOT EXISTS bills (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE bills ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Membros da casa podem ver contas" ON bills;
-CREATE POLICY "Membros da casa podem ver contas"
-  ON bills FOR SELECT
-  USING (house_id IN (SELECT house_id FROM profiles WHERE id = auth.uid()));
-
-DROP POLICY IF EXISTS "Membros da casa podem criar contas" ON bills;
-CREATE POLICY "Membros da casa podem criar contas"
-  ON bills FOR INSERT
-  WITH CHECK (house_id IN (SELECT house_id FROM profiles WHERE id = auth.uid()));
-
-DROP POLICY IF EXISTS "Membros da casa podem atualizar contas" ON bills;
-CREATE POLICY "Membros da casa podem atualizar contas"
-  ON bills FOR UPDATE
-  USING (house_id IN (SELECT house_id FROM profiles WHERE id = auth.uid()));
-
--- 4. Bill Status (pagamento por mês)
 CREATE TABLE IF NOT EXISTS bill_status (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   bill_id UUID REFERENCES bills NOT NULL,
@@ -104,42 +49,6 @@ CREATE TABLE IF NOT EXISTS bill_status (
   UNIQUE(bill_id, mes_referencia)
 );
 
-ALTER TABLE bill_status ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Membros podem ver status" ON bill_status;
-CREATE POLICY "Membros podem ver status"
-  ON bill_status FOR SELECT
-  USING (
-    bill_id IN (
-      SELECT id FROM bills WHERE house_id IN (
-        SELECT house_id FROM profiles WHERE id = auth.uid()
-      )
-    )
-  );
-
-DROP POLICY IF EXISTS "Membros podem inserir status" ON bill_status;
-CREATE POLICY "Membros podem inserir status"
-  ON bill_status FOR INSERT
-  WITH CHECK (
-    bill_id IN (
-      SELECT id FROM bills WHERE house_id IN (
-        SELECT house_id FROM profiles WHERE id = auth.uid()
-      )
-    )
-  );
-
-DROP POLICY IF EXISTS "Membros podem atualizar status" ON bill_status;
-CREATE POLICY "Membros podem atualizar status"
-  ON bill_status FOR UPDATE
-  USING (
-    bill_id IN (
-      SELECT id FROM bills WHERE house_id IN (
-        SELECT house_id FROM profiles WHERE id = auth.uid()
-      )
-    )
-  );
-
--- 5. Receipts (comprovantes)
 CREATE TABLE IF NOT EXISTS receipts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   bill_id UUID REFERENCES bills NOT NULL,
@@ -149,31 +58,105 @@ CREATE TABLE IF NOT EXISTS receipts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 2. Função auxiliar (SECURITY DEFINER evita recursão nas policies de profiles)
+
+CREATE OR REPLACE FUNCTION my_house_id()
+RETURNS UUID
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT house_id FROM profiles WHERE id = auth.uid()
+$$ LANGUAGE sql;
+
+-- 3. RLS: houses
+
+ALTER TABLE houses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Usuário autenticado pode criar casa" ON houses;
+CREATE POLICY "Usuário autenticado pode criar casa"
+  ON houses FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Membros podem ver a própria casa" ON houses;
+CREATE POLICY "Membros podem ver a própria casa"
+  ON houses FOR SELECT
+  USING (id = my_house_id() OR my_house_id() IS NULL);
+
+-- 4. RLS: profiles
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Membros da casa podem ver perfis da mesma casa" ON profiles;
+CREATE POLICY "Membros da casa podem ver perfis da mesma casa"
+  ON profiles FOR SELECT
+  USING (id = auth.uid() OR house_id = my_house_id());
+
+DROP POLICY IF EXISTS "Usuário pode criar seu próprio perfil" ON profiles;
+CREATE POLICY "Usuário pode criar seu próprio perfil"
+  ON profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "Usuário pode atualizar o próprio perfil" ON profiles;
+CREATE POLICY "Usuário pode atualizar o próprio perfil"
+  ON profiles FOR UPDATE
+  USING (id = auth.uid());
+
+-- 5. RLS: bills
+
+ALTER TABLE bills ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Membros da casa podem ver contas" ON bills;
+CREATE POLICY "Membros da casa podem ver contas"
+  ON bills FOR SELECT
+  USING (house_id = my_house_id());
+
+DROP POLICY IF EXISTS "Membros da casa podem criar contas" ON bills;
+CREATE POLICY "Membros da casa podem criar contas"
+  ON bills FOR INSERT
+  WITH CHECK (house_id = my_house_id());
+
+DROP POLICY IF EXISTS "Membros da casa podem atualizar contas" ON bills;
+CREATE POLICY "Membros da casa podem atualizar contas"
+  ON bills FOR UPDATE
+  USING (house_id = my_house_id());
+
+-- 6. RLS: bill_status
+
+ALTER TABLE bill_status ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Membros podem ver status" ON bill_status;
+CREATE POLICY "Membros podem ver status"
+  ON bill_status FOR SELECT
+  USING (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
+
+DROP POLICY IF EXISTS "Membros podem inserir status" ON bill_status;
+CREATE POLICY "Membros podem inserir status"
+  ON bill_status FOR INSERT
+  WITH CHECK (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
+
+DROP POLICY IF EXISTS "Membros podem atualizar status" ON bill_status;
+CREATE POLICY "Membros podem atualizar status"
+  ON bill_status FOR UPDATE
+  USING (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
+
+-- 7. RLS: receipts
+
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Membros podem ver comprovantes" ON receipts;
 CREATE POLICY "Membros podem ver comprovantes"
   ON receipts FOR SELECT
-  USING (
-    bill_id IN (
-      SELECT id FROM bills WHERE house_id IN (
-        SELECT house_id FROM profiles WHERE id = auth.uid()
-      )
-    )
-  );
+  USING (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
 
 DROP POLICY IF EXISTS "Membros podem inserir comprovantes" ON receipts;
 CREATE POLICY "Membros podem inserir comprovantes"
   ON receipts FOR INSERT
-  WITH CHECK (
-    bill_id IN (
-      SELECT id FROM bills WHERE house_id IN (
-        SELECT house_id FROM profiles WHERE id = auth.uid()
-      )
-    )
-  );
+  WITH CHECK (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
 
--- 6. Storage bucket para comprovantes (privado)
+-- 8. Storage bucket para comprovantes (privado)
+
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('comprovantes', 'comprovantes', false)
 ON CONFLICT (id) DO NOTHING;
@@ -184,9 +167,7 @@ CREATE POLICY "Membros sobem comprovantes da casa"
   TO authenticated
   WITH CHECK (
     bucket_id = 'comprovantes'
-    AND (storage.foldername(name))[1] IN (
-      SELECT house_id::text FROM profiles WHERE id = auth.uid()
-    )
+    AND (storage.foldername(name))[1] = my_house_id()::text
   );
 
 DROP POLICY IF EXISTS "Membros leem comprovantes da casa" ON storage.objects;
@@ -195,12 +176,22 @@ CREATE POLICY "Membros leem comprovantes da casa"
   TO authenticated
   USING (
     bucket_id = 'comprovantes'
-    AND (storage.foldername(name))[1] IN (
-      SELECT house_id::text FROM profiles WHERE id = auth.uid()
-    )
+    AND (storage.foldername(name))[1] = my_house_id()::text
   );
 
--- 7. Função para gerar código de convite único
+-- 9. Backfill de dono para casas antigas (primeiro membro vira dono)
+
+UPDATE houses
+SET owner_id = (
+  SELECT p.id FROM profiles p
+  WHERE p.house_id = houses.id
+  ORDER BY p.created_at
+  LIMIT 1
+)
+WHERE owner_id IS NULL;
+
+-- 10. Função para gerar código de convite único
+
 CREATE OR REPLACE FUNCTION generate_invite_code()
 RETURNS TEXT AS $$
 DECLARE
@@ -215,17 +206,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 8. Backfill de dono para casas antigas (primeiro membro vira dono)
-UPDATE houses
-SET owner_id = (
-  SELECT p.id FROM profiles p
-  WHERE p.house_id = houses.id
-  ORDER BY p.created_at
-  LIMIT 1
-)
-WHERE owner_id IS NULL;
+-- 11. Função para entrar numa casa via código de convite
 
--- 9. Função para entrar numa casa via código de convite
 CREATE OR REPLACE FUNCTION join_house(code TEXT)
 RETURNS VOID
 SECURITY DEFINER
@@ -242,8 +224,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 10. Função para o dono da casa remover um participante
+-- 12. Função para o dono da casa remover um participante
 -- O removido ganha uma casa nova própria para continuar usando o app
+
 CREATE OR REPLACE FUNCTION remove_member(member_id UUID)
 RETURNS VOID
 SECURITY DEFINER
