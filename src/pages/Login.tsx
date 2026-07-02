@@ -32,8 +32,9 @@ export default function Login({ onLogin }: LoginProps) {
         await api.signIn(email, senha)
       }
       onLogin()
-    } catch {
-      setErro(copy.auth.erroLogin)
+    } catch (err) {
+      const code = (err as { code?: string })?.code
+      setErro(code === 'email_not_confirmed' ? copy.auth.emailNaoConfirmado : copy.auth.erroLogin)
     } finally {
       setLoading(false)
     }

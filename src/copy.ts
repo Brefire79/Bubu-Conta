@@ -14,6 +14,7 @@ export const copy = {
     criar: "Criar conta",
     entrando: "Entrando...",
     confirmaEmail: "Conta criada. Confirma teu e-mail pra entrar.",
+    emailNaoConfirmado: "Falta confirmar teu e-mail. Procura o link na caixa de entrada (ou no spam).",
     demoAviso: "(Modo demo — qualquer e-mail/senha funciona)",
     erroLogin: "E-mail ou senha errado. Confere aí.",
     erroGeral: "Algo travou no login. Tenta de novo?",
