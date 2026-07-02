@@ -26,19 +26,19 @@ export default function BillCard({ bill, mesReferencia, onOpen }: BillCardProps)
       onClick={() => onOpen(bill)}
       className={`bill-card ${isPaid ? 'bill-card-success' : 'bill-card-danger'} animate-slide-up`}
     >
-      <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${isPaid ? 'bg-bubu-success' : 'bg-bubu-danger'}`}>
+      <div className={`w-10 h-10 min-[400px]:w-11 min-[400px]:h-11 rounded-full flex items-center justify-center flex-shrink-0 ${isPaid ? 'bg-bubu-success' : 'bg-bubu-danger'}`}>
         <CategoryIcon categoria={bill.categoria} className="w-5 h-5 text-white" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-white text-base uppercase truncate">{nome}</h3>
+        <h3 className="font-bold text-white text-[15px] min-[400px]:text-base uppercase truncate">{nome}</h3>
         <p className={`text-xs whitespace-nowrap ${statusColor}`}>
           {copy.billCard.vence.replace('{data}', formatDueDate(bill.vencimento, mesReferencia))}
         </p>
       </div>
 
       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <span className={`font-extrabold text-lg leading-tight ${statusColor}`}>{formatValor(bill.valor)}</span>
+        <span className={`font-extrabold text-base min-[400px]:text-lg leading-tight ${statusColor}`}>{formatValor(bill.valor)}</span>
         {isPaid ? (
           <span className="pill-success">{copy.billCard.statusPago}</span>
         ) : isOverdue ? (

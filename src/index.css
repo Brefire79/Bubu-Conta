@@ -4,9 +4,20 @@
 
 @layer base {
   * { @apply border-bubu-divider; }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-bubu-base text-white;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overscroll-behavior-y: none;
+  }
+  button, a, input, select {
+    touch-action: manipulation;
+  }
+  input, select, textarea {
+    font-size: max(1rem, 16px);
   }
 }
 
@@ -62,7 +73,8 @@
            text-[11px] font-extrabold uppercase tracking-wide text-white animate-pulse-slow;
   }
   .bill-card {
-    @apply w-full rounded-[14px] border p-4 flex items-center gap-3 text-left
+    @apply w-full rounded-[14px] border py-4 px-3 min-[400px]:px-4 flex items-center
+           gap-2.5 min-[400px]:gap-3 text-left
            transition-all duration-300 active:scale-[0.98];
   }
   .bill-card-danger {

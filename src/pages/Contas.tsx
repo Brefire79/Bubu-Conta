@@ -94,22 +94,22 @@ export default function Contas() {
       ) : (
         <ul className="space-y-3">
           {bills.map(bill => (
-            <li key={bill.id} className="card flex items-center gap-3 p-4">
-              <div className="w-11 h-11 rounded-full bg-bubu-divider flex items-center justify-center flex-shrink-0">
+            <li key={bill.id} className="card flex items-start gap-3 p-4">
+              <div className="w-10 h-10 rounded-full bg-bubu-divider flex items-center justify-center flex-shrink-0">
                 <CategoryIcon categoria={bill.categoria} className="w-5 h-5 text-bubu-gold" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-white uppercase truncate">{bill.nome}</h3>
-                <p className="text-[13px] text-bubu-secondary">
+                <h3 className="font-bold text-white uppercase truncate text-[15px]">{bill.nome}</h3>
+                <p className="text-xs text-bubu-secondary truncate">
                   {CATEGORIA_MAP.get(bill.categoria)?.label} · dia {bill.vencimento} · {copy.formulario.tipo[bill.tipo]}
                 </p>
+                <p className="font-extrabold text-white mt-1">{formatValor(bill.valor)}</p>
               </div>
-              <span className="font-extrabold text-white">{formatValor(bill.valor)}</span>
-              <div className="flex gap-1">
-                <button onClick={() => setEditingBill(bill)} aria-label={copy.conta.editar} className="p-2 rounded-lg text-bubu-secondary hover:text-bubu-gold transition-colors">
+              <div className="flex gap-1 flex-shrink-0">
+                <button onClick={() => setEditingBill(bill)} aria-label={copy.conta.editar} className="p-2.5 rounded-lg text-bubu-secondary hover:text-bubu-gold transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" /></svg>
                 </button>
-                <button onClick={() => handleDelete(bill.id)} aria-label={copy.conta.apagar} className="p-2 rounded-lg text-bubu-secondary hover:text-bubu-danger transition-colors">
+                <button onClick={() => handleDelete(bill.id)} aria-label={copy.conta.apagar} className="p-2.5 rounded-lg text-bubu-secondary hover:text-bubu-danger transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2m1 0-1 14H8L7 6" /></svg>
                 </button>
               </div>
