@@ -27,7 +27,7 @@ async function ensureProfile(): Promise<Profile> {
   if (!profile) {
     const { data: house, error: houseError } = await sb()
       .from('houses')
-      .insert({ invite_code: generateInviteCode() })
+      .insert({ invite_code: generateInviteCode(), owner_id: user.id })
       .select()
       .single()
     if (houseError) throw houseError
@@ -204,6 +204,11 @@ export const supabaseStore = {
       .select('*')
       .eq('house_id', profile.house_id)
     return { ...house, members: (members ?? []) as Profile[] } as House
+  },
+
+  async removeMember(memberId: string) {
+    const { error } = await sb().rpc('remove_member', { member_id: memberId })
+    if (error) throw error
   },
 
   async joinHouse(code: string) {

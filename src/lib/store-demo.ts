@@ -7,13 +7,16 @@ const DEMO_USER: Profile = {
   house_id: 'demo-house-001',
 }
 
+const DEMO_MEMBERS: Profile[] = [
+  DEMO_USER,
+  { id: 'demo-user-002', name: 'Luana', house_id: 'demo-house-001' },
+]
+
 const DEMO_HOUSE: House = {
   id: 'demo-house-001',
   invite_code: 'BUBU123',
-  members: [
-    DEMO_USER,
-    { id: 'demo-user-002', name: 'Luana', house_id: 'demo-house-001' },
-  ],
+  owner_id: DEMO_USER.id,
+  members: DEMO_MEMBERS,
 }
 
 function generateId() {
@@ -65,6 +68,7 @@ function isCurrentOrPastMonth(ym: string) {
 class DemoStore {
   private bills: Bill[] = []
   private billStatuses: BillStatus[] = []
+  private members: Profile[] = [...DEMO_MEMBERS]
   private currentUser: Profile = DEMO_USER
 
   constructor() {
@@ -78,6 +82,7 @@ class DemoStore {
         const data = JSON.parse(raw)
         this.bills = data.bills ?? []
         this.billStatuses = data.billStatuses ?? []
+        this.members = data.members ?? [...DEMO_MEMBERS]
       }
     } catch { /* ignore */ }
 
@@ -90,6 +95,7 @@ class DemoStore {
     localStorage.setItem('bubu-demo', JSON.stringify({
       bills: this.bills,
       billStatuses: this.billStatuses,
+      members: this.members,
     }))
   }
 
@@ -307,8 +313,27 @@ class DemoStore {
     }).reverse()
   }
 
-  getHouse() { return DEMO_HOUSE }
-  getMembers() { return DEMO_HOUSE.members }
+  getHouse(): House {
+    return { ...DEMO_HOUSE, members: this.members }
+  }
+  getMembers() { return this.members }
+
+  addMember(nome: string): Profile {
+    const member: Profile = {
+      id: generateId(),
+      name: nome.trim(),
+      house_id: DEMO_HOUSE.id,
+    }
+    this.members.push(member)
+    this.save()
+    return member
+  }
+
+  removeMember(id: string) {
+    if (id === this.currentUser.id) throw new Error('Não dá pra remover você mesmo')
+    this.members = this.members.filter(m => m.id !== id)
+    this.save()
+  }
 
   getUser() { return this.currentUser }
   async signIn(_email: string, _password: string) {

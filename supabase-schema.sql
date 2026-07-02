@@ -5,8 +5,11 @@
 CREATE TABLE IF NOT EXISTS houses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   invite_code TEXT UNIQUE NOT NULL,
+  owner_id UUID REFERENCES auth.users,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE houses ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users;
 
 ALTER TABLE houses ENABLE ROW LEVEL SECURITY;
 
@@ -212,7 +215,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 8. Função para entrar numa casa via código de convite
+-- 8. Backfill de dono para casas antigas (primeiro membro vira dono)
+UPDATE houses
+SET owner_id = (
+  SELECT p.id FROM profiles p
+  WHERE p.house_id = houses.id
+  ORDER BY p.created_at
+  LIMIT 1
+)
+WHERE owner_id IS NULL;
+
+-- 9. Função para entrar numa casa via código de convite
 CREATE OR REPLACE FUNCTION join_house(code TEXT)
 RETURNS VOID
 SECURITY DEFINER
@@ -226,5 +239,36 @@ BEGIN
     RAISE EXCEPTION 'Código de convite inválido';
   END IF;
   UPDATE profiles SET house_id = target_house WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql;
+
+-- 10. Função para o dono da casa remover um participante
+-- O removido ganha uma casa nova própria para continuar usando o app
+CREATE OR REPLACE FUNCTION remove_member(member_id UUID)
+RETURNS VOID
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  my_house UUID;
+  new_house UUID;
+BEGIN
+  SELECT house_id INTO my_house FROM profiles WHERE id = auth.uid();
+  IF my_house IS NULL THEN
+    RAISE EXCEPTION 'Usuário sem casa';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM houses WHERE id = my_house AND owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Apenas o dono da casa pode remover participantes';
+  END IF;
+  IF member_id = auth.uid() THEN
+    RAISE EXCEPTION 'O dono não pode remover a si mesmo';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = member_id AND house_id = my_house) THEN
+    RAISE EXCEPTION 'Participante não está na casa';
+  END IF;
+  INSERT INTO houses (invite_code, owner_id)
+  VALUES (generate_invite_code(), member_id)
+  RETURNING id INTO new_house;
+  UPDATE profiles SET house_id = new_house WHERE id = member_id;
 END;
 $$ LANGUAGE plpgsql;

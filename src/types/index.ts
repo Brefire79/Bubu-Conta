@@ -11,6 +11,7 @@ export interface Profile {
 export interface House {
   id: string
   invite_code: string
+  owner_id?: string
   members: Profile[]
 }
 

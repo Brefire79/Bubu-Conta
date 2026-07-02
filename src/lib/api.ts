@@ -85,6 +85,16 @@ export const api = {
     await supabaseStore.joinHouse(code)
   },
 
+  async addMember(nome: string): Promise<Profile> {
+    if (USE_DEMO) return store.addMember(nome)
+    throw new Error('No modo produção, a pessoa entra com o código de convite')
+  },
+
+  async removeMember(id: string) {
+    if (USE_DEMO) { store.removeMember(id); return }
+    await supabaseStore.removeMember(id)
+  },
+
   async uploadReceipt(billId: string, mes: string, file: File): Promise<Receipt> {
     if (USE_DEMO) throw new Error('Indisponível no modo demo')
     return supabaseStore.uploadReceipt(billId, mes, file)
