@@ -4,6 +4,7 @@ import type { MonthSummary } from '../types'
 import { CATEGORIA_MAP } from '../types'
 import { copy } from '../copy'
 import { formatValor } from '../lib/dates'
+import { valorEfetivo } from '../lib/valores'
 
 export default function Relatorios() {
   const [history, setHistory] = useState<MonthSummary[]>([])
@@ -38,7 +39,7 @@ export default function Relatorios() {
           {history.map(m => {
             const aberto = openMonth === m.mes
             const porCategoria = [...m.contas.reduce((map, c) => {
-              map.set(c.categoria, (map.get(c.categoria) ?? 0) + c.valor)
+              map.set(c.categoria, (map.get(c.categoria) ?? 0) + valorEfetivo(c))
               return map
             }, new Map<string, number>())].sort((a, b) => b[1] - a[1])
 

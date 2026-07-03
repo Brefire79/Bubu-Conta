@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { House, Profile } from '../types'
+import type { House, MonthSummary, Profile } from '../types'
 import { copy } from '../copy'
 
 export default function Config({ onSignOut }: { onSignOut: () => void }) {
@@ -13,6 +13,9 @@ export default function Config({ onSignOut }: { onSignOut: () => void }) {
   const [toast, setToast] = useState('')
   const [erro, setErro] = useState('')
   const [busy, setBusy] = useState(false)
+  const [historico, setHistorico] = useState<MonthSummary[]>([])
+  const [mesesSelecionados, setMesesSelecionados] = useState<string[]>([])
+  const [exportando, setExportando] = useState(false)
 
   const loadHouse = () => {
     api.getHouse().then(setHouse).catch(() => {})
@@ -21,6 +24,7 @@ export default function Config({ onSignOut }: { onSignOut: () => void }) {
   useEffect(() => {
     loadHouse()
     api.getSessionUser().then(setUser).catch(() => {})
+    api.getHistory().then(setHistorico).catch(() => {})
   }, [])
 
   const showToast = (msg: string) => {
@@ -74,6 +78,34 @@ export default function Config({ onSignOut }: { onSignOut: () => void }) {
     } finally {
       setConfirmRemove(null)
       setBusy(false)
+    }
+  }
+
+  const toggleMes = (mes: string) => {
+    setMesesSelecionados(sel =>
+      sel.includes(mes) ? sel.filter(m => m !== mes) : [...sel, mes]
+    )
+  }
+
+  const handleExportar = async (formato: 'pdf' | 'csv') => {
+    if (mesesSelecionados.length === 0) {
+      showToast(copy.config.exportarSelecione)
+      return
+    }
+    setExportando(true)
+    try {
+      const { compartilharArquivo, gerarCsv, gerarPdf } = await import('../lib/export')
+      const meses = historico
+        .filter(m => mesesSelecionados.includes(m.mes))
+        .sort((a, b) => a.mes.localeCompare(b.mes))
+      const blob = formato === 'pdf' ? gerarPdf(meses) : gerarCsv(meses)
+      const nome = `bubu-contas-${meses[0].mes}${meses.length > 1 ? `-a-${meses[meses.length - 1].mes}` : ''}.${formato}`
+      await compartilharArquivo(blob, nome)
+      showToast(copy.config.exportarPronto)
+    } catch {
+      showToast(copy.config.exportarErro)
+    } finally {
+      setExportando(false)
     }
   }
 
@@ -189,6 +221,47 @@ export default function Config({ onSignOut }: { onSignOut: () => void }) {
             {erro && <p className="text-sm text-bubu-danger mt-2">{erro}</p>}
           </section>
         )}
+
+        <section className="card">
+          <h2 className="font-bold text-white mb-1">{copy.config.exportarTitulo}</h2>
+          <p className="text-sm text-bubu-secondary mb-4">{copy.config.exportarTexto}</p>
+          {historico.length === 0 ? (
+            <p className="text-sm text-bubu-muted">{copy.config.exportarVazio}</p>
+          ) : (
+            <>
+              <div className="space-y-2 mb-4">
+                {historico.map(m => (
+                  <label key={m.mes} className="flex items-center gap-3 cursor-pointer rounded-xl border border-bubu-divider px-4 py-3 hover:border-bubu-gold transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={mesesSelecionados.includes(m.mes)}
+                      onChange={() => toggleMes(m.mes)}
+                      className="w-4 h-4 accent-[#d4af37]"
+                    />
+                    <span className="flex-1 text-gray-200">{m.nome}</span>
+                    <span className="text-xs text-bubu-muted">{m.contas.length} contas</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  disabled={exportando || mesesSelecionados.length === 0}
+                  onClick={() => handleExportar('pdf')}
+                  className="btn-primary flex-1"
+                >
+                  {exportando ? copy.config.exportarGerando : copy.config.exportarPdf}
+                </button>
+                <button
+                  disabled={exportando || mesesSelecionados.length === 0}
+                  onClick={() => handleExportar('csv')}
+                  className="btn-secondary flex-1"
+                >
+                  {exportando ? copy.config.exportarGerando : copy.config.exportarPlanilha}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
 
         <button onClick={handleSignOut} className="btn-danger w-full">
           {copy.config.sair}

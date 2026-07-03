@@ -32,12 +32,14 @@ export default function BillCard({ bill, mesReferencia, onOpen }: BillCardProps)
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-white text-[15px] min-[400px]:text-base uppercase truncate">{bill.nome}</h3>
         <p className={`text-xs whitespace-nowrap ${statusColor}`}>
-          {copy.billCard.vence.replace('{data}', formatDueDate(bill.vencimento, mesReferencia))}{infoParcela}
+          {copy.billCard.vence.replace('{data}', formatDueDate(bill.vencimento, mesReferencia))}{infoParcela}{bill.status?.nota ? ' · 📝' : ''}
         </p>
       </div>
 
       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <span className={`font-extrabold text-base min-[400px]:text-lg leading-tight ${statusColor}`}>{formatValor(bill.valor)}</span>
+        <span className={`font-extrabold text-base min-[400px]:text-lg leading-tight ${statusColor}`}>
+          {formatValor(isPaid ? bill.status?.valor_pago ?? bill.valor : bill.valor)}
+        </span>
         {isPaid ? (
           <span className="pill-success">{copy.billCard.statusPago}</span>
         ) : isOverdue ? (

@@ -1,7 +1,7 @@
 import { USE_DEMO } from './supabase'
 import { supabaseStore } from './store-supabase'
 import { store } from './store-demo'
-import type { Bill, BillWithStatus, House, MonthSummary, NewBill, Profile, Receipt } from '../types'
+import type { Bill, BillWithStatus, Divida, House, MonthSummary, NewBill, Profile, Receipt } from '../types'
 import { getMonthName } from './dates'
 
 async function demoHistory(): Promise<MonthSummary[]> {
@@ -12,7 +12,7 @@ async function supabaseHistory(): Promise<MonthSummary[]> {
   const meses = await supabaseStore.getMonths()
   const summaries = await Promise.all(meses.map(async mes => {
     const contas = await supabaseStore.getBillsForMonth(mes)
-    const pago = contas.filter(c => c.status_enum === 'pago').reduce((s, c) => s + c.valor, 0)
+    const pago = contas.filter(c => c.status_enum === 'pago').reduce((s, c) => s + (c.status?.valor_pago ?? c.valor), 0)
     const pendente = contas.filter(c => c.status_enum !== 'pago').reduce((s, c) => s + c.valor, 0)
     return { mes, nome: getMonthName(mes), total: pago + pendente, pago, pendente, contas }
   }))
@@ -61,14 +61,32 @@ export const api = {
     await supabaseStore.deleteBill(id)
   },
 
-  async markPaid(id: string, mes: string) {
-    if (USE_DEMO) { store.markPaid(id, mes); return }
-    await supabaseStore.markPaid(id, mes)
+  async markPaid(id: string, mes: string, valorPago?: number) {
+    if (USE_DEMO) { store.markPaid(id, mes, valorPago); return }
+    await supabaseStore.markPaid(id, mes, valorPago)
+  },
+
+  async getCategorias(): Promise<string[]> {
+    return USE_DEMO ? store.getCategorias() : supabaseStore.getCategorias()
+  },
+
+  async createCategoria(label: string) {
+    if (USE_DEMO) { store.createCategoria(label); return }
+    await supabaseStore.createCategoria(label)
   },
 
   async markUnpaid(id: string, mes: string) {
     if (USE_DEMO) { store.markUnpaid(id, mes); return }
     await supabaseStore.markUnpaid(id, mes)
+  },
+
+  async getDividasAnteriores(): Promise<Divida[]> {
+    return USE_DEMO ? store.getDividasAnteriores() : supabaseStore.getDividasAnteriores()
+  },
+
+  async setNota(id: string, mes: string, nota: string) {
+    if (USE_DEMO) { store.setNota(id, mes, nota); return }
+    await supabaseStore.setNota(id, mes, nota)
   },
 
   async transferToNextMonth(id: string, mes: string) {

@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { copy } from '../copy'
 import type { Bill, Categoria, NewBill } from '../types'
 import { CATEGORIAS } from '../types'
+import { api } from '../lib/api'
+
+const NOVA_CATEGORIA = '__nova__'
 
 interface BillFormProps {
   editingBill?: Bill | null
@@ -17,11 +20,18 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
   const [tipo, setTipo] = useState<'mensal' | 'anual' | 'parcelada'>(editingBill?.tipo ?? 'mensal')
   const [parcelas, setParcelas] = useState(editingBill?.parcelas ? String(editingBill.parcelas) : '')
   const [parcelaAtual, setParcelaAtual] = useState(editingBill?.parcela_atual ? String(editingBill.parcela_atual) : '1')
+  const [customCats, setCustomCats] = useState<string[]>([])
+  const [novaCategoria, setNovaCategoria] = useState('')
   const [erro, setErro] = useState('')
 
-  const isValid = nome.trim() && valor.trim() && vencimento.trim()
+  useEffect(() => {
+    api.getCategorias().then(setCustomCats).catch(() => {})
+  }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const isValid = nome.trim() && valor.trim() && vencimento.trim()
+    && (categoria !== NOVA_CATEGORIA || novaCategoria.trim())
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro('')
 
@@ -38,10 +48,23 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
       return
     }
 
+    let categoriaFinal = categoria
+    if (categoria === NOVA_CATEGORIA) {
+      const nomeCat = novaCategoria.trim()
+      if (!nomeCat) { setErro(copy.categoriaNova.erro); return }
+      try {
+        await api.createCategoria(nomeCat)
+      } catch {
+        setErro(copy.toast.erro)
+        return
+      }
+      categoriaFinal = nomeCat
+    }
+
     onSave({
       nome: nome.trim(),
       valor: valorNum,
-      categoria,
+      categoria: categoriaFinal,
       vencimento: vencNum,
       tipo,
       parcelas: parcelasNum,
@@ -79,8 +102,24 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
           {CATEGORIAS.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
           ))}
+          {customCats.map(cat => (
+            <option key={cat} value={cat}>📦 {cat}</option>
+          ))}
+          <option value={NOVA_CATEGORIA}>{copy.categoriaNova.opcao}</option>
         </select>
       </div>
+
+      {categoria === NOVA_CATEGORIA && (
+        <div>
+          <label className="label">{copy.categoriaNova.label}</label>
+          <input
+            className="input-field"
+            placeholder={copy.categoriaNova.placeholder}
+            value={novaCategoria}
+            onChange={e => setNovaCategoria(e.target.value)}
+          />
+        </div>
+      )}
 
       <div>
         <label className="label">{copy.formulario.vencimento.label}</label>

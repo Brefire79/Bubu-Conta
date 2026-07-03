@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
-import type { Bill, BillStatus, BillWithStatus, House, NewBill, Profile, Receipt } from '../types'
+import type { Bill, BillStatus, BillWithStatus, Divida, House, NewBill, Profile, Receipt } from '../types'
 import { getCurrentMonth, isCurrentOrPastMonth, isOverdue, nextMonth } from './dates'
 import { contaAtivaNoMes, rebaseParcelaAtual } from './parcelas'
+import { calcularDividas } from './dividas'
 
 function sb() {
   if (!supabase) throw new Error('Supabase não configurado')
@@ -164,7 +165,7 @@ export const supabaseStore = {
     if (error) throw error
   },
 
-  async markPaid(id: string, mesReferencia: string) {
+  async markPaid(id: string, mesReferencia: string, valorPago?: number) {
     const profile = cachedProfile ?? await ensureProfile()
     const { error } = await sb().from('bill_status').upsert({
       bill_id: id,
@@ -173,6 +174,7 @@ export const supabaseStore = {
       pago_por: profile.id,
       pago_em: new Date().toISOString(),
       transferida: false,
+      valor_pago: valorPago ?? null,
     }, { onConflict: 'bill_id,mes_referencia' })
     if (error) throw error
   },
@@ -184,8 +186,66 @@ export const supabaseStore = {
       pago: false,
       pago_por: null,
       pago_em: null,
+      valor_pago: null,
     }, { onConflict: 'bill_id,mes_referencia' })
     if (error) throw error
+  },
+
+  async getCategorias(): Promise<string[]> {
+    const { data } = await sb().from('categories').select('label').order('label')
+    return (data ?? []).map(r => r.label as string)
+  },
+
+  async createCategoria(label: string) {
+    const profile = cachedProfile ?? await ensureProfile()
+    const { error } = await sb().from('categories').insert({
+      house_id: profile.house_id,
+      label: label.trim(),
+    })
+    if (error && !`${error.code}`.startsWith('23')) throw error
+  },
+
+  async getDividasAnteriores(): Promise<Divida[]> {
+    const { data: bills, error } = await sb()
+      .from('bills')
+      .select('*')
+      .eq('ativo', true)
+    if (error) throw error
+    const ativas = (bills ?? []) as Bill[]
+    if (ativas.length === 0) return []
+
+    const { data: statuses } = await sb()
+      .from('bill_status')
+      .select('*')
+      .lt('mes_referencia', getCurrentMonth())
+      .in('bill_id', ativas.map(b => b.id))
+
+    return calcularDividas(ativas, (statuses ?? []) as BillStatus[])
+  },
+
+  async setNota(id: string, mesReferencia: string, nota: string) {
+    const { data: existente } = await sb()
+      .from('bill_status')
+      .select('id')
+      .eq('bill_id', id)
+      .eq('mes_referencia', mesReferencia)
+      .maybeSingle()
+    if (existente) {
+      const { error } = await sb()
+        .from('bill_status')
+        .update({ nota: nota.trim() || null, updated_at: new Date().toISOString() })
+        .eq('id', existente.id)
+      if (error) throw error
+    } else {
+      const { error } = await sb().from('bill_status').insert({
+        bill_id: id,
+        mes_referencia: mesReferencia,
+        pago: false,
+        transferida: false,
+        nota: nota.trim() || null,
+      })
+      if (error) throw error
+    }
   },
 
   async transferToNextMonth(id: string, mesReferencia: string) {

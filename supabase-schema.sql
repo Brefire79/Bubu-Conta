@@ -49,6 +49,18 @@ CREATE TABLE IF NOT EXISTS bill_status (
   UNIQUE(bill_id, mes_referencia)
 );
 
+ALTER TABLE bill_status ADD COLUMN IF NOT EXISTS nota TEXT;
+ALTER TABLE bill_status ADD COLUMN IF NOT EXISTS valor_pago NUMERIC(10,2);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS cancelada_em TEXT;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  house_id UUID REFERENCES houses NOT NULL,
+  label TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(house_id, label)
+);
+
 CREATE TABLE IF NOT EXISTS receipts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   bill_id UUID REFERENCES bills NOT NULL,
@@ -140,6 +152,20 @@ DROP POLICY IF EXISTS "Membros podem atualizar status" ON bill_status;
 CREATE POLICY "Membros podem atualizar status"
   ON bill_status FOR UPDATE
   USING (bill_id IN (SELECT id FROM bills WHERE house_id = my_house_id()));
+
+-- 6b. RLS: categories
+
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Membros podem ver categorias" ON categories;
+CREATE POLICY "Membros podem ver categorias"
+  ON categories FOR SELECT
+  USING (house_id = my_house_id());
+
+DROP POLICY IF EXISTS "Membros podem criar categorias" ON categories;
+CREATE POLICY "Membros podem criar categorias"
+  ON categories FOR INSERT
+  WITH CHECK (house_id = my_house_id());
 
 -- 7. RLS: receipts
 

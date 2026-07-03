@@ -1,5 +1,6 @@
-import type { Bill, BillStatus, BillWithStatus, Profile, NewBill, Categoria, House } from '../types'
+import type { Bill, BillStatus, BillWithStatus, Divida, Profile, NewBill, Categoria, House } from '../types'
 import { contaAtivaNoMes, rebaseParcelaAtual } from './parcelas'
+import { calcularDividas } from './dividas'
 
 const DEMO_USER: Profile = {
   id: 'demo-user-001',
@@ -69,6 +70,7 @@ class DemoStore {
   private bills: Bill[] = []
   private billStatuses: BillStatus[] = []
   private members: Profile[] = [...DEMO_MEMBERS]
+  private customCategorias: string[] = []
   private currentUser: Profile = DEMO_USER
 
   constructor() {
@@ -83,6 +85,7 @@ class DemoStore {
         this.bills = data.bills ?? []
         this.billStatuses = data.billStatuses ?? []
         this.members = data.members ?? [...DEMO_MEMBERS]
+        this.customCategorias = data.customCategorias ?? []
       }
     } catch { /* ignore */ }
 
@@ -96,6 +99,7 @@ class DemoStore {
       bills: this.bills,
       billStatuses: this.billStatuses,
       members: this.members,
+      customCategorias: this.customCategorias,
     }))
   }
 
@@ -203,6 +207,26 @@ class DemoStore {
       })
   }
 
+  getDividasAnteriores(): Divida[] {
+    return calcularDividas(this.bills, this.billStatuses)
+  }
+
+  setNota(id: string, mesReferencia: string, nota: string) {
+    let st = this.billStatuses.find(s => s.bill_id === id && s.mes_referencia === mesReferencia)
+    if (!st) {
+      st = {
+        id: generateId(),
+        bill_id: id,
+        mes_referencia: mesReferencia,
+        pago: false,
+        transferida: false,
+      }
+      this.billStatuses.push(st)
+    }
+    st.nota = nota.trim() || undefined
+    this.save()
+  }
+
   getPendingBills(): BillWithStatus[] {
     const mesAtual = getCurrentMonth()
     return this.getBillsForMonth(mesAtual).filter(b => b.status_enum !== 'pago')
@@ -259,7 +283,7 @@ class DemoStore {
     }
   }
 
-  markPaid(id: string, mesReferencia: string) {
+  markPaid(id: string, mesReferencia: string, valorPago?: number) {
     let st = this.billStatuses.find(s => s.bill_id === id && s.mes_referencia === mesReferencia)
     if (!st) {
       st = {
@@ -275,6 +299,7 @@ class DemoStore {
     st.pago_por = this.currentUser.id
     st.pago_em = new Date().toISOString()
     st.transferida = false
+    st.valor_pago = valorPago ?? null
     this.save()
   }
 
@@ -284,15 +309,36 @@ class DemoStore {
       st.pago = false
       st.pago_por = undefined
       st.pago_em = undefined
+      st.valor_pago = null
+      this.save()
+    }
+  }
+
+  getCategorias(): string[] {
+    return this.customCategorias
+  }
+
+  createCategoria(label: string) {
+    const nome = label.trim()
+    if (nome && !this.customCategorias.includes(nome)) {
+      this.customCategorias.push(nome)
       this.save()
     }
   }
 
   transferToNextMonth(id: string, mesReferencia: string) {
-    const st = this.billStatuses.find(s => s.bill_id === id && s.mes_referencia === mesReferencia)
-    if (st) {
-      st.transferida = true
+    let st = this.billStatuses.find(s => s.bill_id === id && s.mes_referencia === mesReferencia)
+    if (!st) {
+      st = {
+        id: generateId(),
+        bill_id: id,
+        mes_referencia: mesReferencia,
+        pago: false,
+        transferida: false,
+      }
+      this.billStatuses.push(st)
     }
+    st.transferida = true
     const { ano, mes } = parseYM(mesReferencia)
     const proxMes = mes === 12 ? formatYM(ano + 1, 1) : formatYM(ano, mes + 1)
     const nextSt = this.billStatuses.find(s => s.bill_id === id && s.mes_referencia === proxMes)
@@ -312,7 +358,7 @@ class DemoStore {
     const meses = [...new Set(this.billStatuses.map(s => s.mes_referencia))].sort()
     return meses.map(m => {
       const contas = this.getBillsForMonth(m)
-      const pago = contas.filter(c => c.status_enum === 'pago').reduce((s, c) => s + c.valor, 0)
+      const pago = contas.filter(c => c.status_enum === 'pago').reduce((s, c) => s + (c.status?.valor_pago ?? c.valor), 0)
       const pendente = contas.filter(c => c.status_enum !== 'pago').reduce((s, c) => s + c.valor, 0)
       return {
         mes: m,

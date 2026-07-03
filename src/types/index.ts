@@ -27,6 +27,7 @@ export interface Bill {
   parcela_atual: number | null
   created_by: string
   ativo: boolean
+  cancelada_em?: string | null
   created_at: string
   updated_at: string
 }
@@ -39,11 +40,17 @@ export interface BillStatus {
   pago_por?: string
   pago_em?: string
   transferida: boolean
+  nota?: string
+  valor_pago?: number | null
 }
 
 export interface BillWithStatus extends Bill {
   status?: BillStatus
   status_enum: BillStatusEnum
+}
+
+export interface Divida extends BillWithStatus {
+  mes_divida: string
 }
 
 export interface NewBill {
@@ -83,11 +90,7 @@ export interface Receipt {
   created_at: string
 }
 
-export type Categoria =
-  | 'agua' | 'luz' | 'aluguel' | 'internet' | 'telefone'
-  | 'condominio' | 'iptu' | 'ipva' | 'seguros' | 'streaming'
-  | 'assinaturas' | 'supermercado' | 'transporte' | 'educacao'
-  | 'saude' | 'lazer' | 'outros'
+export type Categoria = string
 
 export const CATEGORIAS: { value: Categoria; label: string; icon: string }[] = [
   { value: 'agua', label: 'Água', icon: '💧' },

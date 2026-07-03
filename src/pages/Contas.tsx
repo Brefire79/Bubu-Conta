@@ -56,6 +56,16 @@ export default function Contas() {
     }
   }
 
+  const handleReativar = async (id: string) => {
+    try {
+      await api.updateBill(id, { cancelada_em: null })
+      showToast(copy.cancelada.reativada)
+      loadBills()
+    } catch {
+      showToast(copy.toast.erro)
+    }
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -94,14 +104,21 @@ export default function Contas() {
       ) : (
         <ul className="space-y-3">
           {bills.map(bill => (
-            <li key={bill.id} className="card flex items-start gap-3 p-4">
+            <li key={bill.id} className={`card flex items-start gap-3 p-4 ${bill.cancelada_em ? 'opacity-60' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-bubu-divider flex items-center justify-center flex-shrink-0">
                 <CategoryIcon categoria={bill.categoria} className="w-5 h-5 text-bubu-gold" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-white uppercase truncate text-[15px]">{bill.nome}</h3>
+                <h3 className="font-bold text-white uppercase truncate text-[15px]">
+                  {bill.nome}
+                  {bill.cancelada_em && (
+                    <span className="ml-2 text-[10px] font-bold text-bubu-danger border border-bubu-danger rounded-full px-2 py-0.5 align-middle normal-case">
+                      {copy.cancelada.pill}
+                    </span>
+                  )}
+                </h3>
                 <p className="text-xs text-bubu-secondary truncate">
-                  {CATEGORIA_MAP.get(bill.categoria)?.label} · dia {bill.vencimento} · {bill.tipo === 'parcelada' && bill.parcelas
+                  {CATEGORIA_MAP.get(bill.categoria)?.label ?? bill.categoria} · dia {bill.vencimento} · {bill.tipo === 'parcelada' && bill.parcelas
                     ? (() => {
                         const p = parcelaNoMes(bill, getCurrentMonth())
                         return p
@@ -111,6 +128,11 @@ export default function Contas() {
                     : copy.formulario.tipo[bill.tipo]}
                 </p>
                 <p className="font-extrabold text-white mt-1">{formatValor(bill.valor)}</p>
+                {bill.cancelada_em && (
+                  <button onClick={() => handleReativar(bill.id)} className="text-xs font-semibold text-bubu-gold underline mt-1">
+                    {copy.cancelada.reativar}
+                  </button>
+                )}
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 <button onClick={() => setEditingBill(bill)} aria-label={copy.conta.editar} className="p-2.5 rounded-lg text-bubu-secondary hover:text-bubu-gold transition-colors">

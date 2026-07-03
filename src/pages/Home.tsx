@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { BillWithStatus, NewBill } from '../types'
+import type { BillWithStatus, Divida, NewBill } from '../types'
 import { copy } from '../copy'
 import { getCurrentMonth } from '../lib/dates'
 import BillCard from '../components/BillCard'
@@ -12,15 +12,23 @@ import OfflineBanner from '../components/OfflineBanner'
 export default function Home() {
   const [mesReferencia, setMesReferencia] = useState(getCurrentMonth())
   const [bills, setBills] = useState<BillWithStatus[]>([])
+  const [dividas, setDividas] = useState<Divida[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<BillWithStatus | null>(null)
+  const [selected, setSelected] = useState<{ bill: BillWithStatus; mes: string } | null>(null)
   const [editingBill, setEditingBill] = useState<BillWithStatus | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [toast, setToast] = useState('')
 
+  const isCurrentMonth = mesReferencia === getCurrentMonth()
+
   const loadBills = useCallback(async () => {
     try {
       setBills(await api.getBillsForMonth(mesReferencia))
+      if (mesReferencia === getCurrentMonth()) {
+        setDividas(await api.getDividasAnteriores())
+      } else {
+        setDividas([])
+      }
     } catch {
       setToast(copy.toast.erro)
     } finally {
@@ -61,7 +69,7 @@ export default function Home() {
   }
 
   const totalAPagar = bills.filter(b => b.status_enum !== 'pago').reduce((s, b) => s + b.valor, 0)
-  const totalPago = bills.filter(b => b.status_enum === 'pago').reduce((s, b) => s + b.valor, 0)
+  const totalPago = bills.filter(b => b.status_enum === 'pago').reduce((s, b) => s + (b.status?.valor_pago ?? b.valor), 0)
   const tudoPago = bills.length > 0 && totalAPagar === 0
 
   return (
@@ -102,11 +110,28 @@ export default function Home() {
         </div>
       ) : (
         <div className="space-y-3">
-          {tudoPago && (
+          {isCurrentMonth && dividas.length > 0 && (
+            <div className="space-y-3 mb-2">
+              <div>
+                <p className="eyebrow text-bubu-danger">{copy.dividas.titulo}</p>
+                <p className="text-xs text-bubu-secondary">{copy.dividas.subtitulo}</p>
+              </div>
+              {dividas.map(d => (
+                <BillCard
+                  key={`${d.id}-${d.mes_divida}`}
+                  bill={d}
+                  mesReferencia={d.mes_divida}
+                  onOpen={b => setSelected({ bill: b, mes: d.mes_divida })}
+                />
+              ))}
+              <div className="border-t border-bubu-divider" />
+            </div>
+          )}
+          {tudoPago && dividas.length === 0 && (
             <p className="text-sm text-bubu-success font-medium text-center">{copy.home.tudoPago}</p>
           )}
           {bills.map(bill => (
-            <BillCard key={bill.id} bill={bill} mesReferencia={mesReferencia} onOpen={setSelected} />
+            <BillCard key={bill.id} bill={bill} mesReferencia={mesReferencia} onOpen={b => setSelected({ bill: b, mes: mesReferencia })} />
           ))}
           <button
             onClick={() => { setEditingBill(null); setShowForm(true) }}
@@ -119,8 +144,9 @@ export default function Home() {
 
       {selected && (
         <BillDetail
-          bill={selected}
-          mesReferencia={mesReferencia}
+          key={`${selected.bill.id}-${selected.mes}`}
+          bill={selected.bill}
+          mesReferencia={selected.mes}
           onClose={() => setSelected(null)}
           onChanged={handleChanged}
           onEdit={b => setEditingBill(b)}
