@@ -116,6 +116,7 @@ class DemoStore {
       ['IPTU', 1800, 10, 'iptu', 'anual', null, null],
     ]
 
+    const inicioSeed = new Date(agora.getFullYear(), agora.getMonth() - 1, 1).toISOString()
     const createdBills: Bill[] = billsData.map(([nome, valor, vencimento, categoria, tipo, parcelas, parcelaAtual]) => ({
       id: generateId(),
       house_id: DEMO_HOUSE.id,
@@ -128,8 +129,8 @@ class DemoStore {
       parcela_atual: parcelaAtual,
       created_by: DEMO_USER.id,
       ativo: true,
-      created_at: agora.toISOString(),
-      updated_at: agora.toISOString(),
+      created_at: inicioSeed,
+      updated_at: inicioSeed,
     }))
 
     const statuses: BillStatus[] = []

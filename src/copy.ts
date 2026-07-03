@@ -35,6 +35,7 @@ export const copy = {
   },
   billCard: {
     vence: "Vence: {data}",
+    parcela: "{atual}/{total}",
     statusAPagar: "A PAGAR",
     statusPago: "PAGO",
     statusAtrasado: "ATRASADO",
@@ -42,7 +43,7 @@ export const copy = {
   conta: {
     marcarPago: "Marcar como pago",
     desfazer: "Desfazer pagamento",
-    parcela: "{nome} — Parcela {atual} de {total}",
+    parcela: "Parcela {atual} de {total}",
     editar: "Editar",
     apagar: "Apagar",
     transferir: "Transferir para o próximo mês",

@@ -22,6 +22,7 @@ export function rebaseParcelaAtual(parcelaInformada: number, createdAt: string) 
 }
 
 export function contaAtivaNoMes(bill: Bill, ym: string): boolean {
-  if (bill.tipo !== 'parcelada' || !bill.parcelas || !bill.parcela_atual) return true
+  if (monthsBetween(bill.created_at.slice(0, 7), ym) < 0) return false
+  if (bill.tipo !== 'parcelada' || !bill.parcelas || bill.parcela_atual == null) return true
   return parcelaNoMes(bill, ym) !== null
 }

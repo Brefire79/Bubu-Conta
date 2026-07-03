@@ -16,12 +16,9 @@ export default function BillCard({ bill, mesReferencia, onOpen }: BillCardProps)
   const statusColor = isPaid ? 'text-bubu-success' : 'text-bubu-danger'
 
   const parcela = parcelaNoMes(bill, mesReferencia)
-  const nome = parcela && bill.parcelas
-    ? copy.conta.parcela
-        .replace('{nome}', bill.nome)
-        .replace('{atual}', String(parcela))
-        .replace('{total}', String(bill.parcelas))
-    : bill.nome
+  const infoParcela = parcela && bill.parcelas
+    ? ' · ' + copy.billCard.parcela.replace('{atual}', String(parcela)).replace('{total}', String(bill.parcelas))
+    : ''
 
   return (
     <button
@@ -33,9 +30,9 @@ export default function BillCard({ bill, mesReferencia, onOpen }: BillCardProps)
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-white text-[15px] min-[400px]:text-base uppercase truncate">{nome}</h3>
+        <h3 className="font-bold text-white text-[15px] min-[400px]:text-base uppercase truncate">{bill.nome}</h3>
         <p className={`text-xs whitespace-nowrap ${statusColor}`}>
-          {copy.billCard.vence.replace('{data}', formatDueDate(bill.vencimento, mesReferencia))}
+          {copy.billCard.vence.replace('{data}', formatDueDate(bill.vencimento, mesReferencia))}{infoParcela}
         </p>
       </div>
 
