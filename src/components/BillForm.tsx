@@ -16,6 +16,7 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
   const [vencimento, setVencimento] = useState(editingBill ? String(editingBill.vencimento) : '')
   const [tipo, setTipo] = useState<'mensal' | 'anual' | 'parcelada'>(editingBill?.tipo ?? 'mensal')
   const [parcelas, setParcelas] = useState(editingBill?.parcelas ? String(editingBill.parcelas) : '')
+  const [parcelaAtual, setParcelaAtual] = useState(editingBill?.parcela_atual ? String(editingBill.parcela_atual) : '1')
   const [erro, setErro] = useState('')
 
   const isValid = nome.trim() && valor.trim() && vencimento.trim()
@@ -30,13 +31,21 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
     const vencNum = parseInt(vencimento, 10)
     if (isNaN(vencNum) || vencNum < 1 || vencNum > 31) { setErro(copy.formulario.vencimentoInvalido); return }
 
+    const parcelasNum = tipo === 'parcelada' ? parseInt(parcelas, 10) || 2 : undefined
+    const parcelaAtualNum = tipo === 'parcelada' ? Math.max(1, parseInt(parcelaAtual, 10) || 1) : undefined
+    if (parcelasNum && parcelaAtualNum && parcelaAtualNum > parcelasNum) {
+      setErro(copy.formulario.parcelaAtualInvalida)
+      return
+    }
+
     onSave({
       nome: nome.trim(),
       valor: valorNum,
       categoria,
       vencimento: vencNum,
       tipo,
-      parcelas: tipo === 'parcelada' ? parseInt(parcelas, 10) || 2 : undefined,
+      parcelas: parcelasNum,
+      parcela_atual: parcelaAtualNum,
     })
   }
 
@@ -109,16 +118,31 @@ export default function BillForm({ editingBill, onSave, onCancel }: BillFormProp
       )}
 
       {tipo === 'parcelada' && (
-        <div>
-          <label className="label">{copy.formulario.parcelasLabel}</label>
-          <input
-            className="input-field"
-            placeholder={copy.formulario.parcelasPlaceholder}
-            value={parcelas}
-            onChange={e => setParcelas(e.target.value.replace(/\D/g, '').slice(0, 2))}
-            inputMode="numeric"
-          />
-        </div>
+        <>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="label">{copy.formulario.parcelaAtualLabel}</label>
+              <input
+                className="input-field"
+                placeholder={copy.formulario.parcelaAtualPlaceholder}
+                value={parcelaAtual}
+                onChange={e => setParcelaAtual(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="label">{copy.formulario.parcelasLabel}</label>
+              <input
+                className="input-field"
+                placeholder={copy.formulario.parcelasPlaceholder}
+                value={parcelas}
+                onChange={e => setParcelas(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                inputMode="numeric"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-bubu-secondary">{copy.formulario.parcelaAjuda}</p>
+        </>
       )}
 
       {erro && (

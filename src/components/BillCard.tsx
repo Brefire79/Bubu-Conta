@@ -1,6 +1,7 @@
 import type { BillWithStatus } from '../types'
 import { copy } from '../copy'
 import { formatDueDate, formatValor } from '../lib/dates'
+import { parcelaNoMes } from '../lib/parcelas'
 import CategoryIcon from './CategoryIcon'
 
 interface BillCardProps {
@@ -14,10 +15,11 @@ export default function BillCard({ bill, mesReferencia, onOpen }: BillCardProps)
   const isOverdue = bill.status_enum === 'atrasado'
   const statusColor = isPaid ? 'text-bubu-success' : 'text-bubu-danger'
 
-  const nome = bill.tipo === 'parcelada' && bill.parcela_atual && bill.parcelas
+  const parcela = parcelaNoMes(bill, mesReferencia)
+  const nome = parcela && bill.parcelas
     ? copy.conta.parcela
         .replace('{nome}', bill.nome)
-        .replace('{atual}', String(bill.parcela_atual))
+        .replace('{atual}', String(parcela))
         .replace('{total}', String(bill.parcelas))
     : bill.nome
 

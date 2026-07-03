@@ -42,6 +42,10 @@ export const api = {
     return USE_DEMO ? store.getBillsForMonth(mes) : supabaseStore.getBillsForMonth(mes)
   },
 
+  async getBills(): Promise<Bill[]> {
+    return USE_DEMO ? store.getBills() : supabaseStore.getBills()
+  },
+
   async createBill(data: NewBill) {
     if (USE_DEMO) { store.createBill(data); return }
     await supabaseStore.createBill(data)

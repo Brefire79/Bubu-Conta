@@ -1,5 +1,5 @@
 import type { Bill, BillStatus, BillWithStatus, Profile, NewBill, Categoria, House } from '../types'
-import { CATEGORIA_MAP } from '../types'
+import { contaAtivaNoMes, rebaseParcelaAtual } from './parcelas'
 
 const DEMO_USER: Profile = {
   id: 'demo-user-001',
@@ -160,9 +160,15 @@ class DemoStore {
     this.save()
   }
 
-  getBillsForMonth(mesReferencia: string): BillWithStatus[] {
+  getBills(): Bill[] {
     return this.bills
       .filter(b => b.ativo)
+      .sort((a, b) => a.vencimento - b.vencimento)
+  }
+
+  getBillsForMonth(mesReferencia: string): BillWithStatus[] {
+    return this.bills
+      .filter(b => b.ativo && contaAtivaNoMes(b, mesReferencia))
       .map(bill => {
         let st = this.billStatuses.find(
           s => s.bill_id === bill.id && s.mes_referencia === mesReferencia
@@ -211,7 +217,7 @@ class DemoStore {
       vencimento: data.vencimento,
       tipo: data.tipo,
       parcelas: data.parcelas ?? null,
-      parcela_atual: data.tipo === 'parcelada' ? 1 : null,
+      parcela_atual: data.tipo === 'parcelada' ? (data.parcela_atual ?? 1) : null,
       created_by: this.currentUser.id,
       ativo: true,
       created_at: new Date().toISOString(),
@@ -234,7 +240,12 @@ class DemoStore {
   updateBill(id: string, data: Partial<Bill>): Bill {
     const idx = this.bills.findIndex(b => b.id === id)
     if (idx === -1) throw new Error('Conta não encontrada')
-    this.bills[idx] = { ...this.bills[idx], ...data, updated_at: new Date().toISOString() }
+    const atual = this.bills[idx]
+    const ajustada = { ...data }
+    if (ajustada.parcela_atual != null && (ajustada.tipo ?? atual.tipo) === 'parcelada') {
+      ajustada.parcela_atual = rebaseParcelaAtual(ajustada.parcela_atual, atual.created_at)
+    }
+    this.bills[idx] = { ...atual, ...ajustada, updated_at: new Date().toISOString() }
     this.save()
     return this.bills[idx]
   }

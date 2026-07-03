@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { BillWithStatus, NewBill } from '../types'
+import type { Bill, NewBill } from '../types'
 import { CATEGORIA_MAP } from '../types'
 import { copy } from '../copy'
 import { formatValor, getCurrentMonth } from '../lib/dates'
+import { parcelaNoMes } from '../lib/parcelas'
 import BillForm from '../components/BillForm'
 import CategoryIcon from '../components/CategoryIcon'
 
 export default function Contas() {
-  const [bills, setBills] = useState<BillWithStatus[]>([])
-  const [editingBill, setEditingBill] = useState<BillWithStatus | null>(null)
+  const [bills, setBills] = useState<Bill[]>([])
+  const [editingBill, setEditingBill] = useState<Bill | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [toast, setToast] = useState('')
 
   const loadBills = async () => {
     try {
-      const data = await api.getBillsForMonth(getCurrentMonth())
-      setBills([...data].sort((a, b) => a.vencimento - b.vencimento))
+      setBills(await api.getBills())
     } catch {
       setToast(copy.toast.erro)
     }
@@ -101,7 +101,14 @@ export default function Contas() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-white uppercase truncate text-[15px]">{bill.nome}</h3>
                 <p className="text-xs text-bubu-secondary truncate">
-                  {CATEGORIA_MAP.get(bill.categoria)?.label} · dia {bill.vencimento} · {copy.formulario.tipo[bill.tipo]}
+                  {CATEGORIA_MAP.get(bill.categoria)?.label} · dia {bill.vencimento} · {bill.tipo === 'parcelada' && bill.parcelas
+                    ? (() => {
+                        const p = parcelaNoMes(bill, getCurrentMonth())
+                        return p
+                          ? copy.contas.parcelaInfo.replace('{atual}', String(p)).replace('{total}', String(bill.parcelas))
+                          : copy.contas.encerrada
+                      })()
+                    : copy.formulario.tipo[bill.tipo]}
                 </p>
                 <p className="font-extrabold text-white mt-1">{formatValor(bill.valor)}</p>
               </div>

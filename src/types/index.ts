@@ -53,6 +53,7 @@ export interface NewBill {
   vencimento: number
   tipo: BillType
   parcelas?: number
+  parcela_atual?: number
 }
 
 export interface HistoryEntry {

@@ -74,6 +74,10 @@ export const copy = {
     anualAjuda: "Tipo IPTU e IPVA, que caem uma vez no ano.",
     parcelasLabel: "Quantas parcelas no total",
     parcelasPlaceholder: "10",
+    parcelaAtualLabel: "Em qual parcela vocês estão",
+    parcelaAtualPlaceholder: "1",
+    parcelaAjuda: "Se a conta já vem de outros meses, informa a parcela deste mês. Ela avança sozinha e some depois da última.",
+    parcelaAtualInvalida: "A parcela atual não pode ser maior que o total.",
     salvar: "Salvar",
     cancelar: "Cancelar",
     faltaNome: "Dá um nome pra conta.",
@@ -89,6 +93,8 @@ export const copy = {
   contas: {
     titulo: "Contas da casa",
     subtitulo: "As contas fixas que se repetem todo mês.",
+    parcelaInfo: "parcela {atual} de {total}",
+    encerrada: "encerrada",
   },
   relatorios: {
     titulo: "Relatórios",

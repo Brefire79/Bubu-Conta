@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import type { Bill, BillStatus, BillWithStatus, House, NewBill, Profile, Receipt } from '../types'
 import { getCurrentMonth, isCurrentOrPastMonth, isOverdue, nextMonth } from './dates'
+import { contaAtivaNoMes, rebaseParcelaAtual } from './parcelas'
 
 function sb() {
   if (!supabase) throw new Error('Supabase não configurado')
@@ -78,6 +79,16 @@ export const supabaseStore = {
     await sb().auth.signOut()
   },
 
+  async getBills(): Promise<Bill[]> {
+    const { data, error } = await sb()
+      .from('bills')
+      .select('*')
+      .eq('ativo', true)
+      .order('vencimento')
+    if (error) throw error
+    return (data ?? []) as Bill[]
+  },
+
   async getBillsForMonth(mesReferencia: string): Promise<BillWithStatus[]> {
     const { data: bills, error } = await sb()
       .from('bills')
@@ -85,7 +96,8 @@ export const supabaseStore = {
       .eq('ativo', true)
     if (error) throw error
 
-    const ids = (bills ?? []).map(b => b.id)
+    const ativas = ((bills ?? []) as Bill[]).filter(b => contaAtivaNoMes(b, mesReferencia))
+    const ids = ativas.map(b => b.id)
     let statuses: BillStatus[] = []
     if (ids.length > 0) {
       const { data } = await sb()
@@ -96,7 +108,7 @@ export const supabaseStore = {
       statuses = (data ?? []) as BillStatus[]
     }
 
-    return (bills as Bill[])
+    return ativas
       .map(bill => {
         const st = statuses.find(s => s.bill_id === bill.id)
         const pago = st?.pago ?? false
@@ -126,16 +138,23 @@ export const supabaseStore = {
       vencimento: data.vencimento,
       tipo: data.tipo,
       parcelas: data.parcelas ?? null,
-      parcela_atual: data.tipo === 'parcelada' ? 1 : null,
+      parcela_atual: data.tipo === 'parcelada' ? (data.parcela_atual ?? 1) : null,
       created_by: profile.id,
     })
     if (error) throw error
   },
 
   async updateBill(id: string, data: Partial<Bill>) {
+    const ajustada = { ...data }
+    if (ajustada.parcela_atual != null && ajustada.tipo === 'parcelada') {
+      const { data: atual } = await sb().from('bills').select('created_at').eq('id', id).single()
+      if (atual) {
+        ajustada.parcela_atual = rebaseParcelaAtual(ajustada.parcela_atual, atual.created_at)
+      }
+    }
     const { error } = await sb()
       .from('bills')
-      .update({ ...data, updated_at: new Date().toISOString() })
+      .update({ ...ajustada, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
   },
